@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "sysinfo.h"
 
 struct cpu cpus[NCPU];
 
@@ -288,6 +289,7 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+  np->mask = p->mask;
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -653,4 +655,28 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+uint64 free_proc(void) {
+  uint64 n = 0;
+  struct proc* p;
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if (p->state != UNUSED) n++;
+    release(&p->lock);
+  }
+  return n;
+}
+
+int
+sysinfo(uint64 addr) {
+  struct proc* p = myproc();
+  struct sysinfo sinfo;
+
+  sinfo.freemem = free_mem();
+  sinfo.nproc = free_proc();
+  if (copyout(p->pagetable, addr, (char*) &sinfo, sizeof(sinfo)) < 0)
+    return -1;
+
+  return 0;
 }
