@@ -432,3 +432,68 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+void vmprint(pagetable_t pb) {
+  //根
+  printf("page table %p\n", pb);
+  // uint64 bit = 0x0FFFFFFFFFFF;
+  for (int i = 0; i < 512; ++i) {
+    pte_t pte = pb[i];
+
+    if (pte & PTE_V) {
+    //打印第一级页表地址
+      //取最高的9位-----第一级对应的ppn
+      pagetable_t onePb = (pagetable_t) (((pte >> 10)) << 12);
+      printf("..%d: pte %p pa %p\n", i, pte, onePb);
+      for (int j = 0; j < 512; ++j) {
+        pte_t onePte = onePb[j];
+        //二级
+        if (onePte & PTE_V) {
+          pagetable_t twoPb = (pagetable_t) (((onePte >> 10)) << 12);
+          printf(".. ..%d: pte %p pa %p\n", j, onePte, twoPb);
+          //三级
+          for (int k = 0; k < 512; ++k) {
+            pte_t twoPte = twoPb[k];
+            if (twoPte & PTE_V) {
+              pagetable_t threePb = (pagetable_t) (((twoPte >> 10)) << 12);
+              printf(".. .. ..%d: pte %p pa %p\n", k, twoPte, threePb);
+            }
+          }
+        }
+      }
+
+    }
+  }
+}
+
+// void vmprint(pagetable_t pagetable, int count)//count应该为0
+// {
+//   // there are 2^9 = 512 PTEs in a page table.
+//   if (count == 0) {
+//     printf("page table %p\n", pagetable);
+//   }
+//   int arg_tmp = count + 1;
+//   if (count != 3) {
+//     for (int i = 0; i < 512; i++) {
+//       pte_t pte = pagetable[i];
+//       if (pte & PTE_V) {
+//         // this PTE points to a lower-level page table.
+//         uint64 child = PTE2PA(pte);
+
+//         if (count == 0) {
+//           printf("..");
+//         } else if (count == 1) {
+//           printf(".. ..");
+//         } else if (count == 2) {
+//           printf(".. .. ..");
+//         }
+//         printf("%d: pte %p pa %p\n", i, pte, child);
+//         vmprint((pagetable_t) child, arg_tmp);
+//       } else {
+//         continue;
+//       }
+//     }
+//   }
+
+//   return;
+// }

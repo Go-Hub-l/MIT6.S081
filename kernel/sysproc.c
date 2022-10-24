@@ -80,7 +80,36 @@ sys_sleep(void)
 int
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
+  uint64 p1;
+  uint64 p2;
+  int num;
+  if (argaddr(0, &p1) < 0) {
+    printf("explain address one failed!\n");
+    return -1;
+  }
+  if (argint(1, &num) < 0 || num > 64) {
+    printf("explain num two failed!\n");
+    return -1;
+  }
+  if (argaddr(2, &p2) < 0) {
+    printf("explain address two failed!\n");
+    return -1;
+  }
+  struct proc* p = myproc();
+  uint64 bitmap = 0;
+  uint64 clr = PTE_A;
+  clr = ~clr;
+  int count = 0;
+  for (uint64 page = p1; page < p1 + num * PGSIZE; page += PGSIZE) {
+    pte_t* pte = walk(p->pagetable, page, 0);
+    if (*pte & PTE_A) {
+      bitmap |= (1 << count);
+        //获得页置零
+      *pte = (*pte) & clr;
+    }
+    ++count;
+  }
+  copyout(p->pagetable, p2, (char*) &bitmap, sizeof(bitmap));
   return 0;
 }
 #endif
