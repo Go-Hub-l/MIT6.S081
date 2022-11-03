@@ -17,6 +17,8 @@ struct entry *table[NBUCKET];
 int keys[NKEYS];
 int nthread = 1;
 
+pthread_mutex_t lock;
+
 
 double
 now()
@@ -42,18 +44,21 @@ void put(int key, int value)
   int i = key % NBUCKET;
 
   // is the key already present?
-  struct entry *e = 0;
+  struct entry* e = 0;
+
   for (e = table[i]; e != 0; e = e->next) {
     if (e->key == key)
       break;
   }
-  if(e){
+  pthread_mutex_lock(&lock);
+  if (e) {
     // update the existing key.
     e->value = value;
   } else {
     // the new is new.
     insert(key, value, &table[i], table[i]);
   }
+  pthread_mutex_unlock(&lock);
 
 }
 
@@ -75,10 +80,12 @@ static void *
 put_thread(void *xa)
 {
   int n = (int) (long) xa; // thread number
-  int b = NKEYS/nthread;
+  int b = NKEYS / nthread;//每个线程负责添加的key的个数
 
   for (int i = 0; i < b; i++) {
-    put(keys[b*n + i], n);
+    // pthread_mutex_lock(&lock);
+    put(keys[b * n + i], n);
+    // pthread_mutex_unlock(&lock);
   }
 
   return NULL;
@@ -91,8 +98,11 @@ get_thread(void *xa)
   int missing = 0;
 
   for (int i = 0; i < NKEYS; i++) {
-    struct entry *e = get(keys[i]);
+    // pthread_mutex_lock(&lock);
+    struct entry* e = get(keys[i]);
+    // pthread_mutex_unlock(&lock);
     if (e == 0) missing++;
+
   }
   printf("%d: %d keys missing\n", n, missing);
   return NULL;
@@ -110,6 +120,8 @@ main(int argc, char *argv[])
     fprintf(stderr, "Usage: %s nthreads\n", argv[0]);
     exit(-1);
   }
+  //初始化锁
+  pthread_mutex_init(&lock, NULL);
   nthread = atoi(argv[1]);
   tha = malloc(sizeof(pthread_t) * nthread);
   srandom(0);
